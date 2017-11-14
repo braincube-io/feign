@@ -15,8 +15,11 @@
  */
 package feign;
 
-import static java.lang.String.format;
+import feign.Request.Options;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,16 +32,8 @@ import java.util.Map;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSocketFactory;
-
-import feign.Request.Options;
-
-import static feign.Util.CONTENT_ENCODING;
-import static feign.Util.CONTENT_LENGTH;
-import static feign.Util.ENCODING_DEFLATE;
-import static feign.Util.ENCODING_GZIP;
+import static feign.Util.*;
+import static java.lang.String.format;
 
 /**
  * Submits HTTP {@link Request requests}. Implementations are expected to be thread-safe.
@@ -90,7 +85,7 @@ public interface Client {
       connection.setConnectTimeout(options.connectTimeoutMillis());
       connection.setReadTimeout(options.readTimeoutMillis());
       connection.setAllowUserInteraction(false);
-      connection.setInstanceFollowRedirects(true);
+      connection.setInstanceFollowRedirects(options.isFollowRedirects());
       connection.setRequestMethod(request.method());
 
       Collection<String> contentEncodingValues = request.headers().get(CONTENT_ENCODING);

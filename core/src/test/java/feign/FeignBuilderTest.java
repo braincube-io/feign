@@ -15,27 +15,22 @@
  */
 package feign;
 
+import feign.codec.Decoder;
+import feign.codec.Encoder;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import feign.codec.Decoder;
-import feign.codec.Encoder;
 
 import static feign.assertj.MockWebServerAssertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class FeignBuilderTest {
 
@@ -76,6 +71,31 @@ public class FeignBuilderTest {
       assertThat(e.status()).isEqualTo(400);
     }
   }
+
+
+
+  @Test public void testNoFollowRedirect() {
+    server.enqueue(new MockResponse().setResponseCode(302).addHeader("Location","/"));
+
+    String url = "http://localhost:" + server.getPort();
+    TestInterface noFollowApi = Feign.builder()
+                                     .options(new Request.Options(100, 600, false))
+                                     .target(TestInterface.class, url);
+
+    Response response = noFollowApi.defaultMethodPassthrough();
+    assertThat(response.status()).isEqualTo(302);
+    assertThat(response.headers().getOrDefault("Location", null))
+        .isNotNull()
+        .isEqualTo(Collections.singletonList("/"));
+
+    server.enqueue(new MockResponse().setResponseCode(302).addHeader("Location","/"));
+    server.enqueue(new MockResponse().setResponseCode(200));
+    TestInterface defaultApi = Feign.builder()
+                                    .options(new Request.Options(100, 600, true))
+                                    .target(TestInterface.class, url);
+    assertThat(defaultApi.defaultMethodPassthrough().status()).isEqualTo(200);
+  }
+
 
   @Test
   public void testUrlPathConcatUrlTrailingSlash() throws Exception {
@@ -206,7 +226,7 @@ public class FeignBuilderTest {
     assertThat(server.takeRequest())
         .hasBody("request data");
   }
-  
+
   @Test
   public void testSlashIsEncodedInPathParams() throws Exception {
     server.enqueue(new MockResponse().setBody("response data"));
@@ -257,7 +277,7 @@ public class FeignBuilderTest {
 
     @RequestLine("POST /")
     String decodedPost();
-    
+
     @RequestLine(value = "GET /api/queues/{vhost}", decodeSlash = false)
     byte[] getQueues(@Param("vhost") String vhost);
 
